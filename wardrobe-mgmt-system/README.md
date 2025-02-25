@@ -23,7 +23,7 @@ Wardrobe Management System is a web app built with **Vue 3** and **Laravel 11** 
   - cp .env.example .env
   - php artisan key:generate
 
-4.**Setup the database environment in the .env file**
+4. **Setup the database environment in the .env file**
  - DB_CONNECTION=sqlite
  - DB_HOST=127.0.0.1
  - DB_PORT=3306
@@ -31,7 +31,7 @@ Wardrobe Management System is a web app built with **Vue 3** and **Laravel 11** 
     DB_USERNAME="Your Username"
     DB_PASSWORD="Your password"
 
-4. **Run the application**
+5. **Run the application**
  - php artisan migrate
  - php artisan serve
  - npm run build
