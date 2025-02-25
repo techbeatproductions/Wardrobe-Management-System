@@ -28,8 +28,8 @@ Wardrobe Management System is a web app built with **Vue 3** and **Laravel 11** 
  - DB_HOST=127.0.0.1
  - DB_PORT=3306
  - DB_DATABASE="Your Database Name"
-    DB_USERNAME="Your Username"
-    DB_PASSWORD="Your password"
+ - DB_USERNAME="Your Username"
+ - DB_PASSWORD="Your password"
 
 5. **Run the application**
  - php artisan migrate
