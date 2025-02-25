@@ -6,63 +6,74 @@ use App\Models\Clothe;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Log;
 
 class ClotheController extends Controller
 {
     /**
-     * Display a listing of the clothing items.
-     *
-     * @param Request $request
-     * @return \Inertia\Response
+     * Display a listing of the clothing items with filters.
      */
     public function index(Request $request)
     {
-        // Get the authenticated user's ID
         $userId = Auth::id();
+        
+        Log::info('Filters Received:', $request->all()); // Debug log
 
-        // Start with the base query for the authenticated user
         $query = Clothe::where('user_id', $userId);
 
-        // Apply filters if provided in the request
-        if ($request->has('category')) {
+        if ($request->filled('category')) {
+            Log::info('Filtering by category:', ['category' => $request->category]); // Debug
             $query->where('category', $request->category);
         }
-        if ($request->has('color')) {
+
+        if ($request->filled('color')) {
             $query->where('color', $request->color);
         }
-        if ($request->has('size')) {
+
+        if ($request->filled('size')) {
             $query->where('size', $request->size);
         }
-        if ($request->has('season')) {
+
+        if ($request->filled('season')) {
             $query->where('season', $request->season);
         }
-        if ($request->has('brand')) {
+
+        if ($request->filled('brand')) {
             $query->where('brand', $request->brand);
         }
 
-        // Search by name or description (optional)
-        if ($request->has('search')) {
+        if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%')
-                  ->orWhere('description', 'like', '%' . $search . '%');
+                $q->where('name', 'like', "%$search%")
+                  ->orWhere('description', 'like', "%$search%");
             });
         }
 
-        // Paginate the results (optional)
-        $clothes = $query->paginate(10);
+        // Debugging: Log the actual SQL query with bindings
+        Log::info('Final Query:', [
+            'query' => $query->toSql(),
+            'bindings' => $query->getBindings()
+        ]);
 
-        // Render the Inertia view with the clothes data
+        $clothes = $query->paginate(10)->withQueryString();
+
+        // Fetch distinct values in a single query
+        $distinctValues = Clothe::where('user_id', $userId)->get(['category', 'color', 'size', 'season', 'brand']);
+
         return Inertia::render('Clothes/Index', [
             'clothes' => $clothes,
             'filters' => $request->only(['search', 'category', 'color', 'size', 'season', 'brand']),
+            'categories' => $distinctValues->pluck('category')->unique()->values(),
+            'colors' => $distinctValues->pluck('color')->unique()->values(),
+            'sizes' => $distinctValues->pluck('size')->unique()->values(),
+            'seasons' => $distinctValues->pluck('season')->unique()->values(),
+            'brands' => $distinctValues->pluck('brand')->unique()->values(),
         ]);
     }
 
     /**
      * Show the form for creating a new clothing item.
-     *
-     * @return \Inertia\Response
      */
     public function create()
     {
@@ -70,14 +81,10 @@ class ClotheController extends Controller
     }
 
     /**
-     * Store a newly created clothing item in the database.
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\RedirectResponse
+     * Store a newly created clothing item.
      */
     public function store(Request $request)
     {
-        // Validate the request data
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
             'category' => 'required|string|max:255',
@@ -86,66 +93,43 @@ class ClotheController extends Controller
             'season' => 'nullable|string|max:255',
             'brand' => 'nullable|string|max:255',
             'description' => 'nullable|string',
-            'image_url' => 'nullable|string',
+            'image_url' => 'nullable|string|url',
         ]);
 
-        // Add the authenticated user's ID to the data
         $validatedData['user_id'] = Auth::id();
 
-        // Create the clothing item
         Clothe::create($validatedData);
 
-        // Redirect to the index page with a success message
         return redirect()->route('clothes.index')->with('success', 'Clothing item created successfully.');
     }
 
     /**
      * Display the specified clothing item.
-     *
-     * @param int $id
-     * @return \Inertia\Response
      */
     public function show($id)
     {
-        // Find the clothing item by ID and ensure it belongs to the authenticated user
         $clothe = Clothe::where('user_id', Auth::id())->findOrFail($id);
 
-        // Render the Inertia view with the clothing item data
-        return Inertia::render('Clothes/Show', [
-            'clothe' => $clothe,
-        ]);
+        return Inertia::render('Clothes/Show', ['clothe' => $clothe]);
     }
 
     /**
      * Show the form for editing the specified clothing item.
-     *
-     * @param int $id
-     * @return \Inertia\Response
      */
     public function edit($id)
     {
-        // Find the clothing item by ID and ensure it belongs to the authenticated user
         $clothe = Clothe::where('user_id', Auth::id())->findOrFail($id);
 
-        // Render the Inertia view with the clothing item data
-        return Inertia::render('Clothes/Edit', [
-            'clothe' => $clothe,
-        ]);
+        return Inertia::render('Clothes/Edit', ['clothe' => $clothe]);
     }
 
     /**
-     * Update the specified clothing item in the database.
-     *
-     * @param Request $request
-     * @param int $id
-     * @return \Illuminate\Http\RedirectResponse
+     * Update the specified clothing item.
      */
     public function update(Request $request, $id)
     {
-        // Find the clothing item by ID and ensure it belongs to the authenticated user
         $clothe = Clothe::where('user_id', Auth::id())->findOrFail($id);
 
-        // Validate the request data
         $validatedData = $request->validate([
             'name' => 'sometimes|string|max:255',
             'category' => 'sometimes|string|max:255',
@@ -154,31 +138,22 @@ class ClotheController extends Controller
             'season' => 'nullable|string|max:255',
             'brand' => 'nullable|string|max:255',
             'description' => 'nullable|string',
-            'image_url' => 'nullable|string',
+            'image_url' => 'nullable|string|url',
         ]);
 
-        // Update the clothing item
         $clothe->update($validatedData);
 
-        // Redirect to the index page with a success message
         return redirect()->route('clothes.index')->with('success', 'Clothing item updated successfully.');
     }
 
     /**
      * Remove the specified clothing item from the database.
-     *
-     * @param int $id
-     * @return \Illuminate\Http\RedirectResponse
      */
     public function destroy($id)
     {
-        // Find the clothing item by ID and ensure it belongs to the authenticated user
         $clothe = Clothe::where('user_id', Auth::id())->findOrFail($id);
-
-        // Delete the clothing item
         $clothe->delete();
 
-        // Redirect to the index page with a success message
         return redirect()->route('clothes.index')->with('success', 'Clothing item deleted successfully.');
     }
 }
