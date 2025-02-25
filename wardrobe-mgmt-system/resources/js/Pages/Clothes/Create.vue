@@ -4,7 +4,7 @@
   <AuthenticatedLayout>
       <template #header>
           <h2 class="text-xl font-semibold leading-tight text-gray-800">
-              Add New Clothing Item
+              Wardrobe Wizard | Add New Clothing Item
           </h2>
       </template>
 
